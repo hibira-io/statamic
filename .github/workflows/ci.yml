@@ -1,0 +1,59 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - statamic: "^5.0"
+            testbench: "9.*"
+            php: "8.2"
+          - statamic: "^5.0"
+            testbench: "10.*"
+            php: "8.3"
+          - statamic: "^6.0"
+            testbench: "10.*"
+            php: "8.3"
+          - statamic: "^6.0"
+            testbench: "11.*"
+            php: "8.4"
+    name: Statamic ${{ matrix.statamic }} / Testbench ${{ matrix.testbench }} / PHP ${{ matrix.php }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: intl, exif, gd
+          coverage: none
+      - name: Install
+        env:
+          COMPOSER_NO_SECURITY_BLOCKING: "1"
+        run: |
+          # Older Laravel and Statamic releases have security advisories, and
+          # Composer refuses those by default. They are tested on purpose;
+          # sites choose their own versions.
+          php -r '$c = json_decode(file_get_contents("composer.json"), true); $c["config"]["audit"]["block-insecure"] = false; $c["config"]["policy"]["advisories"]["block"] = false; file_put_contents("composer.json", json_encode($c, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));'
+          composer require "statamic/cms:${{ matrix.statamic }}" --no-interaction --no-update
+          composer require --dev "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
+          composer update --prefer-dist --no-interaction --no-progress --with-all-dependencies
+      - run: vendor/bin/phpunit
+
+  bundle:
+    runs-on: ubuntu-latest
+    name: dist is up to date
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build
+      - run: git diff --exit-code dist
