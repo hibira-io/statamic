@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "esbuild resources/js/cp.js --bundle --minify --format=iife --target=es2019 --loader:.css=text --outfile=dist/cp.js --legal-comments=none && esbuild resources/js/preview.js --minify --target=es2017 --outfile=dist/preview.js --legal-comments=none"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "pusher-js": "^8.4.0",
+    "qrcode-generator": "^1.4.4"
+  }
+}

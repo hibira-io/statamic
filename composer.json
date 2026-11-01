@@ -1,0 +1,77 @@
+{
+    "name": "hibira-io/statamic",
+    "description": "Live comments, \"someone else is editing\" warnings and live preview on any device for the Statamic control panel, over Hibira WebSockets",
+    "type": "statamic-addon",
+    "keywords": [
+        "statamic",
+        "statamic-addon",
+        "laravel",
+        "comments",
+        "collaboration",
+        "presence",
+        "live-preview",
+        "realtime",
+        "websockets",
+        "hibira"
+    ],
+    "homepage": "https://hibira.io",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Hibira",
+            "homepage": "https://hibira.io"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/hibira-io/statamic/issues",
+        "docs": "https://github.com/hibira-io/statamic#readme",
+        "email": "support@hibira.io"
+    },
+    "require": {
+        "php": "^8.2",
+        "hibira-io/laravel": "^0.2",
+        "pusher/pusher-php-server": "^7.2",
+        "statamic/cms": "^5.0|^6.0"
+    },
+    "require-dev": {
+        "mockery/mockery": "^1.6",
+        "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^10.0|^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Hibira\\Statamic\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Hibira\\Statamic\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "statamic": {
+            "name": "Hibira Realtime",
+            "slug": "hibira-statamic",
+            "description": "Live comments, editing warnings and live preview on any device, over Hibira"
+        },
+        "laravel": {
+            "providers": [
+                "Hibira\\Statamic\\ServiceProvider"
+            ]
+        },
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pixelfear/composer-dist-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
