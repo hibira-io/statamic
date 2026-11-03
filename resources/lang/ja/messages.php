@@ -22,6 +22,8 @@ return [
     'resolved_by' => ':name さんが解決済みにしました',
     'close' => '閉じる',
     'failed' => '保存できませんでした。もう一度お試しください。',
+    'load_failed' => 'コメントを読み込めませんでした。',
+    'retry' => '再試行',
     'too_long' => 'コメントは :max 文字までです。',
     'new_comment' => ':name さんがコメントしました',
     'you' => 'あなた',

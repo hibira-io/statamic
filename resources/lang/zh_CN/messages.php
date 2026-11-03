@@ -22,6 +22,8 @@ return [
     'resolved_by' => ':name 已标记为解决',
     'close' => '关闭',
     'failed' => '保存失败，请重试。',
+    'load_failed' => '无法加载评论。',
+    'retry' => '重试',
     'too_long' => '评论最多 :max 个字。',
     'new_comment' => ':name 发表了评论',
     'you' => '你',

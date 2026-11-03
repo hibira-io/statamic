@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "build": "esbuild resources/js/cp.js --bundle --minify --format=iife --target=es2019 --loader:.css=text --outfile=dist/cp.js --legal-comments=none && esbuild resources/js/preview.js --minify --target=es2017 --outfile=dist/preview.js --legal-comments=none"
+    "build": "esbuild resources/js/cp.js --bundle --minify --format=iife --target=es2019 --loader:.css=text --outfile=dist/cp.js --legal-comments=eof \"--banner:js=/*! Hibira Realtime for Statamic. MIT License. Includes pusher-js (MIT, Copyright (c) 2020 Pusher, Ltd), @stablelib/base64 and @stablelib/utf8 (MIT, Copyright (C) 2016 Dmitry Chestnykh) and qrcode-generator (MIT, Copyright (c) 2009 Kazuhiko Arase). Full license texts: THIRD-PARTY-NOTICES. */\" && esbuild resources/js/preview.js --minify --target=es2017 --outfile=dist/preview.js --legal-comments=none"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",

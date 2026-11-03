@@ -133,9 +133,12 @@ class CommentStore
             flock($handle, LOCK_EX);
             $comments = $callback($this->decode((string) stream_get_contents($handle)));
 
+            // Encode before truncating, so a failure leaves the file as it was.
+            $json = json_encode($comments, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)."\n";
+
             ftruncate($handle, 0);
             rewind($handle);
-            fwrite($handle, json_encode($comments, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n");
+            fwrite($handle, $json);
             fflush($handle);
         } finally {
             flock($handle, LOCK_UN);

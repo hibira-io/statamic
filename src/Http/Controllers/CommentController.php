@@ -31,11 +31,13 @@ class CommentController extends Controller
             'body' => ['required', 'string', 'max:'.(int) config('hibira-statamic.comments.max_length', 2000)],
         ]);
 
+        abort_unless(mb_check_encoding($data['body'], 'UTF-8'), 422);
+
         $body = trim(str_replace("\r\n", "\n", $data['body']));
         abort_if($body === '', 422);
 
         $comment = $this->comments->add($entry, Members::info($this->user()), $body);
-        $this->broadcast($request, $entry, 'added', $comment);
+        $this->broadcast($request, $entry, 'added', $comment['id']);
 
         return response()->json(['comment' => $comment], 201);
     }
@@ -54,7 +56,7 @@ class CommentController extends Controller
         );
         abort_if($changed === null, 404);
 
-        $this->broadcast($request, $entry, 'updated', $changed);
+        $this->broadcast($request, $entry, 'updated', $changed['id']);
 
         return response()->json(['comment' => $changed]);
     }
@@ -70,18 +72,22 @@ class CommentController extends Controller
         abort_unless($user->isSuper() || (string) ($found['author']['id'] ?? '') === (string) $user->id(), 403);
 
         $this->comments->delete($entry, $comment);
-        $this->broadcast($request, $entry, 'deleted', ['id' => $comment]);
+        $this->broadcast($request, $entry, 'deleted', $comment);
 
         return response()->json(['deleted' => true]);
     }
 
-    /** @param  array<string, mixed>  $comment */
-    protected function broadcast(Request $request, string $entry, string $action, array $comment): void
+    /**
+     * Tell the others on the entry which comment changed. Only the ID is
+     * sent: they fetch the comment from the control panel, so its text,
+     * however long, never meets the plan's message size limit.
+     */
+    protected function broadcast(Request $request, string $entry, string $action, string $commentId): void
     {
         $this->realtime->trigger(
             (string) Channels::entry($entry),
             'comment',
-            ['action' => $action, 'comment' => $comment],
+            ['action' => $action, 'id' => $commentId],
             Realtime::socketId($request->header('X-Socket-ID')),
         );
     }

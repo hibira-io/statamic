@@ -9,11 +9,18 @@ use Throwable;
  * Talks to Hibira for the addon: sends events and signs channel
  * subscriptions.
  *
- * A failed send is reported but never fails the request. Comments are
- * stored first, and open pages fetch them again when they reconnect.
+ * Events are sent after the response, so a slow or unreachable Hibira never
+ * holds up a save. A failed send is reported but never fails the request.
+ * Comments are stored first, and open pages fetch them again when they
+ * reconnect.
  */
 class Realtime
 {
+    /** @var list<array{0: string, 1: string, 2: array<string, mixed>, 3: ?string}> */
+    protected array $pending = [];
+
+    protected bool $flushRegistered = false;
+
     public function __construct(protected Hibira $hibira) {}
 
     /** Whether the app ID, key and secret are set. */
@@ -22,13 +29,47 @@ class Realtime
         return $this->hibira->missingRealtimeCredentials() === [];
     }
 
-    /** @param  array<string, mixed>  $data */
+    /**
+     * Send an event once the response has gone out. Outside of an HTTP
+     * request (queue workers, commands) it is sent at once.
+     *
+     * @param  array<string, mixed>  $data
+     */
     public function trigger(string $channel, string $event, array $data, ?string $exceptSocket = null): void
     {
         if (! $this->configured()) {
             return;
         }
 
+        if (app()->runningInConsole() && ! app()->runningUnitTests()) {
+            $this->send($channel, $event, $data, $exceptSocket);
+
+            return;
+        }
+
+        $this->pending[] = [$channel, $event, $data, $exceptSocket];
+
+        if (! $this->flushRegistered) {
+            $this->flushRegistered = true;
+            app()->terminating(fn () => $this->flush());
+        }
+    }
+
+    /** Send the events waiting for the end of the request. */
+    public function flush(): void
+    {
+        $pending = $this->pending;
+        $this->pending = [];
+        $this->flushRegistered = false;
+
+        foreach ($pending as [$channel, $event, $data, $exceptSocket]) {
+            $this->send($channel, $event, $data, $exceptSocket);
+        }
+    }
+
+    /** @param  array<string, mixed>  $data */
+    protected function send(string $channel, string $event, array $data, ?string $exceptSocket): void
+    {
         try {
             $this->hibira->realtime()->trigger(
                 $channel,

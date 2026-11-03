@@ -174,6 +174,9 @@ class EntryPage {
         this.channelName = 'presence-hibira-statamic.entry.' + entryId;
         this.comments = [];
         this.loaded = false;
+        this.loadFailed = false;
+        this.loading = null;
+        this.reloadAfter = false;
         this.showResolved = false;
         this.open = null;
         this.unread = false;
@@ -273,7 +276,7 @@ class EntryPage {
         this.channel.bind('pusher:member_added', () => this.renderPeople());
         this.channel.bind('pusher:member_removed', () => this.renderPeople());
         this.channel.bind('saved', (data) => this.onSaved(data));
-        this.channel.bind('comment', (data) => this.onComment(data));
+        this.channel.bind('comment', (data) => this.onRemoteComment(data));
     }
 
     others() {
@@ -326,22 +329,54 @@ class EntryPage {
 
     // -- Comments --------------------------------------------------------------
 
-    async loadComments() {
-        try {
-            const data = await api(route('comments', this.entryId));
-            this.comments = data.comments || [];
-            this.loaded = true;
+    // Fetches the comments. Calls made while a fetch runs are folded into
+    // one more fetch after it, so a burst of events costs two requests.
+    loadComments() {
+        if (this.loading) {
+            this.reloadAfter = true;
+            return this.loading;
+        }
+
+        this.loading = (async () => {
+            try {
+                const data = await api(route('comments', this.entryId));
+                const known = new Set(this.comments.map((c) => c.id));
+                this.comments = data.comments || [];
+                if (this.loaded && this.open !== 'comments' && this.comments.some((c) => !known.has(c.id) && String(c.author.id) !== String(config.user.id))) {
+                    this.unread = true;
+                }
+                this.loaded = true;
+                this.loadFailed = false;
+            } catch (e) {
+                // Shown in the card with a retry button; a reconnect also tries again.
+                this.loadFailed = true;
+            } finally {
+                this.loading = null;
+            }
             this.renderCount();
             if (this.open === 'comments') this.renderComments();
-        } catch (e) {
-            // Shown as an empty list; the next reconnect tries again.
+            if (this.reloadAfter) {
+                this.reloadAfter = false;
+                this.loadComments();
+            }
+        })();
+
+        return this.loading;
+    }
+
+    // Events from the others carry only the comment ID, so a long comment
+    // never meets the message size limit: fetch the comments again.
+    onRemoteComment({ action, id }) {
+        if (action === 'deleted') {
+            this.onComment({ action, comment: { id } });
+        } else {
+            this.loadComments();
         }
     }
 
     onComment({ action, comment }) {
         if (action === 'added') {
             if (!this.comments.some((c) => c.id === comment.id)) this.comments.push(comment);
-            if (this.open !== 'comments' && String(comment.author.id) !== String(config.user.id)) this.unread = true;
         } else if (action === 'updated') {
             this.comments = this.comments.map((c) => (c.id === comment.id ? comment : c));
         } else if (action === 'deleted') {
@@ -378,11 +413,28 @@ class EntryPage {
         const atEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 8;
         const scrollTop = list.scrollTop;
 
-        list.replaceChildren(...(visible.length
-            ? visible.map((comment) => this.renderComment(comment))
-            : [h('div', { class: 'hibira-st-empty' }, this.loaded ? t('empty') : '…')]));
+        let placeholder;
+        if (this.loadFailed && !this.loaded) {
+            placeholder = h('div', { class: 'hibira-st-empty' },
+                h('div', {}, t('load_failed')),
+                h('button', { type: 'button', class: 'hibira-st-text-button', onclick: () => this.retryLoad() }, t('retry')));
+        } else {
+            placeholder = h('div', { class: 'hibira-st-empty', 'aria-busy': this.loaded ? 'false' : 'true' }, this.loaded ? t('empty') : '…');
+        }
+
+        list.replaceChildren(...(visible.length ? visible.map((comment) => this.renderComment(comment)) : [placeholder]));
 
         list.scrollTop = atEnd ? list.scrollHeight : scrollTop;
+    }
+
+    retryLoad() {
+        this.loadFailed = false;
+        this.renderComments();
+        this.loadComments();
+    }
+
+    clearError() {
+        if (this.error) this.error.textContent = '';
     }
 
     buildCommentsCard() {
@@ -400,7 +452,10 @@ class EntryPage {
             placeholder: t('placeholder'),
             'aria-label': t('placeholder'),
             maxlength: config.maxLength,
-            oninput: () => this.resize(),
+            oninput: () => {
+                this.clearError();
+                this.resize();
+            },
             onkeydown: (event) => {
                 if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
                     event.preventDefault();
@@ -481,6 +536,7 @@ class EntryPage {
         try {
             const { comment } = await api(route('comments', this.entryId), { method: 'POST', body: { body } });
             this.textarea.value = '';
+            this.clearError();
             this.onComment({ action: 'added', comment });
             if (this.list) this.list.scrollTop = this.list.scrollHeight;
         } catch (e) {
@@ -494,6 +550,7 @@ class EntryPage {
     async resolve(comment, resolved) {
         try {
             const data = await api(route('resolve', this.entryId, comment.id), { method: 'POST', body: { resolved } });
+            this.clearError();
             this.onComment({ action: 'updated', comment: data.comment });
         } catch (e) {
             this.error.textContent = t('failed');
@@ -504,6 +561,7 @@ class EntryPage {
         this.confirming = null;
         try {
             await api(route('comment', this.entryId, comment.id), { method: 'DELETE' });
+            this.clearError();
             this.onComment({ action: 'deleted', comment: { id: comment.id } });
         } catch (e) {
             this.renderComments();

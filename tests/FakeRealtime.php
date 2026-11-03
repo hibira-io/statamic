@@ -5,7 +5,7 @@ namespace Hibira\Statamic\Tests;
 use Hibira\Laravel\Hibira;
 use Hibira\Statamic\Realtime;
 
-/** Records events instead of sending them. */
+/** Records events instead of sending them, after the response like the real one. */
 class FakeRealtime extends Realtime
 {
     /** @var list<array{channel: string, event: string, data: array<string, mixed>, except: ?string}> */
@@ -21,11 +21,9 @@ class FakeRealtime extends Realtime
         return $this->isConfigured;
     }
 
-    public function trigger(string $channel, string $event, array $data, ?string $exceptSocket = null): void
+    protected function send(string $channel, string $event, array $data, ?string $exceptSocket): void
     {
-        if ($this->isConfigured) {
-            $this->sent[] = ['channel' => $channel, 'event' => $event, 'data' => $data, 'except' => $exceptSocket];
-        }
+        $this->sent[] = ['channel' => $channel, 'event' => $event, 'data' => $data, 'except' => $exceptSocket];
     }
 
     /** @return list<array{channel: string, event: string, data: array<string, mixed>, except: ?string}> */

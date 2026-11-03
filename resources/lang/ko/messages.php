@@ -22,6 +22,8 @@ return [
     'resolved_by' => ':name 님이 해결함',
     'close' => '닫기',
     'failed' => '저장하지 못했습니다. 다시 시도하세요.',
+    'load_failed' => '댓글을 불러오지 못했습니다.',
+    'retry' => '다시 시도',
     'too_long' => '댓글은 최대 :max자까지 쓸 수 있습니다.',
     'new_comment' => ':name 님이 댓글을 남겼습니다',
     'you' => '나',
