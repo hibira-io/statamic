@@ -129,10 +129,15 @@ class ControlPanelTest extends TestCase
     public function test_saving_an_entry_tells_the_people_who_have_it_open(): void
     {
         $entry = $this->entry('post-1');
+        $this->realtime->flush();
         $this->realtime->sent = [];
 
         $this->actingAs($this->superUser());
         $entry->set('title', 'Changed')->save();
+
+        // Sent after the response, so an unreachable Hibira can't slow the save.
+        $this->assertSame([], $this->realtime->sent('saved'));
+        $this->app->terminate();
 
         $sent = $this->realtime->sent('saved');
         $this->assertCount(1, $sent);

@@ -22,6 +22,8 @@ return [
     'resolved_by' => 'Resolved by :name',
     'close' => 'Close',
     'failed' => 'Couldn’t save. Try again.',
+    'load_failed' => 'Couldn’t load the comments.',
+    'retry' => 'Try again',
     'too_long' => 'Comments can be up to :max characters.',
     'new_comment' => ':name commented',
     'you' => 'You',

@@ -27,6 +27,7 @@ class CommentsTest extends TestCase
         $this->assertSame('presence-hibira-statamic.entry.post-1', $sent[0]['channel']);
         $this->assertSame('added', $sent[0]['data']['action']);
         $this->assertSame('11.22', $sent[0]['except']);
+        $this->assertSame(['action' => 'added', 'id' => $response->json('comment.id')], $sent[0]['data']);
 
         $this->actingAs($user)->getJson('/cp/hibira/entries/post-1/comments')
             ->assertOk()
@@ -45,6 +46,49 @@ class CommentsTest extends TestCase
         $this->actingAs($user)->postJson('/cp/hibira/entries/post-1/comments', ['body' => ''])->assertStatus(422);
         $this->actingAs($user)->postJson('/cp/hibira/entries/post-1/comments', ['body' => str_repeat('a', 11)])->assertStatus(422);
         $this->actingAs($user)->postJson('/cp/hibira/entries/missing/comments', ['body' => 'Hi'])->assertNotFound();
+    }
+
+    public function test_long_comments_are_announced_by_id_only(): void
+    {
+        $this->entry('post-1');
+        $body = str_repeat('留言', 900);
+
+        $id = $this->actingAs($this->superUser())
+            ->postJson('/cp/hibira/entries/post-1/comments', ['body' => $body])
+            ->assertCreated()
+            ->json('comment.id');
+
+        $sent = $this->realtime->sent('comment')[0];
+        $this->assertSame(['action' => 'added', 'id' => $id], $sent['data']);
+        $this->assertLessThan(200, strlen(json_encode($sent['data'])));
+    }
+
+    public function test_invalid_utf8_is_refused_and_keeps_the_existing_comments(): void
+    {
+        $this->entry('post-1');
+        $store = app(CommentStore::class);
+        $store->add('post-1', ['id' => 'ada', 'name' => 'Ada'], 'Keep me');
+
+        $this->actingAs($this->superUser())
+            ->post('/cp/hibira/entries/post-1/comments', ['body' => "bad \xB1\x31"], ['Accept' => 'application/json'])
+            ->assertStatus(422);
+
+        $this->assertSame(['Keep me'], array_column($store->all('post-1'), 'body'));
+    }
+
+    public function test_a_comment_that_cannot_be_encoded_leaves_the_file_untouched(): void
+    {
+        $this->entry('post-1');
+        $store = app(CommentStore::class);
+        $store->add('post-1', ['id' => 'ada', 'name' => 'Ada'], 'Keep me');
+
+        try {
+            $store->add('post-1', ['id' => 'ada', 'name' => 'Ada'], "bad \xB1\x31");
+            $this->fail('Expected the encoding to fail.');
+        } catch (\JsonException) {
+        }
+
+        $this->assertSame(['Keep me'], array_column($store->all('post-1'), 'body'));
     }
 
     public function test_comments_can_be_resolved_and_reopened(): void

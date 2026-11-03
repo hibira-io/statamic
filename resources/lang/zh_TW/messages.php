@@ -22,6 +22,8 @@ return [
     'resolved_by' => ':name 已標記為解決',
     'close' => '關閉',
     'failed' => '儲存失敗，請再試一次。',
+    'load_failed' => '無法載入留言。',
+    'retry' => '重試',
     'too_long' => '留言最多 :max 個字。',
     'new_comment' => ':name 留言了',
     'you' => '你',

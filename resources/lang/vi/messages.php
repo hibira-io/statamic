@@ -22,6 +22,8 @@ return [
     'resolved_by' => ':name đã đánh dấu xử lý',
     'close' => 'Đóng',
     'failed' => 'Không lưu được. Hãy thử lại.',
+    'load_failed' => 'Không tải được bình luận.',
+    'retry' => 'Thử lại',
     'too_long' => 'Bình luận tối đa :max ký tự.',
     'new_comment' => ':name đã bình luận',
     'you' => 'Bạn',
